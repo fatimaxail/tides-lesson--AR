@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>رحلة إلى عالم المد والجزر</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&family=Readex+Pro:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app" data-sky="day">
+    <video id="camera-feed" playsinline muted autoplay hidden></video>
+    <canvas id="scene" aria-label="مشهد ثلاثي الأبعاد قابل للتدوير والتكبير"></canvas>
+    <div id="labels" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <p class="brand">
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+          <circle cx="20" cy="10" r="6" fill="#cfd8e6"/>
+          <path d="M2 21c3-3 6-3 9 0s6 3 9 0 6-3 8-1v8H2z" fill="#47b0ff"/>
+        </svg>
+        رحلة إلى عالم المد والجزر
+      </p>
+
+      <nav class="stage-nav" aria-label="مراحل الرحلة">
+        <button class="stage-tab" data-stage="1"><span class="stage-tab__num">١</span>سرّ القمر</button>
+        <button class="stage-tab" data-stage="2"><span class="stage-tab__num">٢</span>المد العالي</button>
+        <button class="stage-tab" data-stage="3"><span class="stage-tab__num">٣</span>المد المنخفض</button>
+        <button class="stage-tab" data-stage="4"><span class="stage-tab__num">٤</span>ماذا استنتجت؟</button>
+      </nav>
+
+      <div class="toolbar">
+        <button class="tool" id="camera-btn" aria-pressed="false">المحيط في الفصل</button>
+        <button class="tool" id="recenter-btn" hidden>توسيط المشهد</button>
+        <button class="tool" id="ar-btn">على الطاولة (AR)</button>
+        <button class="tool" id="sound-btn" aria-pressed="true" title="الأصوات">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>
+            <path d="M16 8a5 5 0 0 1 0 8M18.5 5.5a8.5 8.5 0 0 1 0 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span>الصوت</span>
+        </button>
+        <button class="tool" id="reset-btn">أعد التجربة</button>
+      </div>
+
+      <div class="progress" aria-hidden="true"><i class="progress__fill" id="progress-fill"></i></div>
+    </header>
+
+    <section class="panel" id="panel" aria-label="لوحة المرحلة" hidden></section>
+
+    <!-- Moved into the panel while a stage is open -->
+    <div class="beach" id="beach" hidden>
+      <div class="beach__head">
+        <b>شاطئنا</b>
+        <span class="pill" id="beach-state"></span>
+        <button class="beach__toggle" id="beach-toggle" aria-expanded="true">إخفاء</button>
+      </div>
+      <div class="beach__view" id="beach-view"></div>
+      <p class="beach__legend">
+        <span><i class="high"></i>أعلى مد</span>
+        <span><i class="low"></i>أدنى جزر</span>
+      </p>
+    </div>
+
+    <p class="scale-note" id="scale-note" hidden>الأحجام والمسافات وارتفاع الماء مكبّرة للتوضيح، وليست بمقياس حقيقي.</p>
+
+    <div class="overlay start" id="start-screen">
+      <div class="card">
+        <h1>رحلة إلى عالم <span>المد والجزر</span></h1>
+        <p class="start__story">مرحبًا يا مستكشف المحيط! تتدفق مياه البحر إلى الشاطئ في أوقات، وتنحسر عنه في أوقات أخرى. ما السبب؟ ولماذا يكون المد أحيانًا أعلى من المعتاد، وأحيانًا أقل؟ ستتوقع، ثم تجرّب، ثم تستنتج السر بنفسك!</p>
+        <div class="actions">
+          <button class="btn btn--primary" id="start-btn">ابدأ المغامرة</button>
+          <button class="btn btn--secondary" id="start-quiz-btn">ماذا استنتجت؟</button>
+        </div>
+        <p class="muted">اسحب المشهد لتدويره، وكبّره بإصبعين أو بعجلة الفأرة.</p>
+      </div>
+    </div>
+
+    <div class="overlay quiz" id="quiz" hidden></div>
+    <canvas id="confetti"></canvas>
+    <div class="toast" id="toast" role="status" hidden></div>
+    <div class="ar-hint" id="ar-hint" hidden>وجّه الجهاز نحو الطاولة ثم المس الشاشة لوضع المشهد</div>
+    <div class="fatal" id="fatal" hidden><p></p></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="js/lesson.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
