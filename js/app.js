@@ -10,7 +10,6 @@
 
   const app = $('#app');
   const panel = $('#panel');
-  const quizEl = $('#quiz');
   const startScreen = $('#start-screen');
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -708,7 +707,7 @@
   function createState(previous) {
     return {
       stage: 0,
-      completed: [false, false, false, false],
+      completed: [false, false, false],
       sceneName: 'beach',
       tideClock: 0,
 
@@ -744,7 +743,6 @@
         lastLows: null,
       },
 
-      quiz: { index: 0, firstTry: true, score: 0, results: [] },
       sound: previous ? previous.sound : true,
       showBeach: previous ? previous.showBeach : true,
     };
@@ -865,7 +863,7 @@
     anchor: (v) => pin.getWorldPosition(v).add(tmpVector.copy(v).normalize().multiplyScalar(0.3)),
     center: ORIGIN,
     facing: () => pin.getWorldPosition(new Vector3()).normalize(),
-    visible: () => inSpace() && state.stage !== 4,
+    visible: inSpace,
   });
 
   const gravityLabelsVisible = () => inMoonScene() && state.gravityStep >= 1;
@@ -1074,12 +1072,12 @@
   const spinButtonText = () => (state.earthSpinning ? 'أوقف دوران الأرض' : 'شغّل دوران الأرض');
 
   function stageHeader(n, title) {
-    return `<p class="panel__count">المرحلة ${toArabicDigits(n)} من ٤</p><h2>${title}</h2>`;
+    return `<p class="panel__count">المرحلة ${toArabicDigits(n)} من ٣</p><h2>${title}</h2>`;
   }
 
   function stageNav(n) {
     const prev = n > 1 ? `<button class="btn btn--secondary btn--small" data-go="${n - 1}">السابق</button>` : '<span></span>';
-    const next = n < 4 ? `<button class="btn btn--primary btn--small" id="next-btn" data-go="${n + 1}">التالي: ${LESSON.stageNames[n + 1]}</button>` : '';
+    const next = n < 3 ? `<button class="btn btn--primary btn--small" id="next-btn" data-go="${n + 1}">التالي: ${LESSON.stageNames[n + 1]}</button>` : '';
     return `<div class="panel__nav">${prev}${next}</div>`;
   }
 
@@ -1186,20 +1184,8 @@
       ${stageNav(n)}`;
   }
 
-  function quizStageHtml() {
-    return `
-      ${stageHeader(4, 'ماذا استنتجت؟')}
-      <p class="lead">استخدم ما استنتجته في المراحل الثلاث لتجيب عن ٦ مواقف جديدة، وتحصل على شارة «مستكشف المحيطات».</p>
-      <div class="actions">
-        <button class="btn btn--primary" id="quiz-btn">${state.completed[3] ? 'أعد المحاولة' : 'ابدأ'}</button>
-      </div>
-      <p class="note">لا بأس بالخطأ! إذا اخترت إجابة غير صحيحة ستظهر لك فكرة تساعدك، ثم تحاول مرة أخرى.</p>
-      ${stageNav(4)}`;
-  }
-
   function renderPanel(n) {
-    const body = n === 4 ? quizStageHtml() : inquiryStageHtml(n);
-    panel.innerHTML = `<button class="panel__toggle" id="panel-toggle" aria-expanded="true">إخفاء اللوحة</button>${body}`;
+    panel.innerHTML = `<button class="panel__toggle" id="panel-toggle" aria-expanded="true">إخفاء اللوحة</button>${inquiryStageHtml(n)}`;
     panel.classList.remove('is-collapsed');
     dockBeachFrame();
     bindPanel(n);
@@ -1217,12 +1203,6 @@
       this.setAttribute('aria-expanded', String(!collapsed));
       setTimeout(layout, 30);
     };
-
-    if (n === 4) {
-      $('#quiz-btn').onclick = openQuiz;
-      updateNextButton();
-      return;
-    }
 
     const stage = LESSON.stages[n];
     const inquiry = state.inquiry[n];
@@ -1352,7 +1332,7 @@
       tab.querySelector('.stage-tab__num').textContent = done ? '✓' : toArabicDigits(n);
     });
     const doneCount = state.completed.filter(Boolean).length;
-    $('#progress-fill').style.width = (doneCount / 4) * 100 + '%';
+    $('#progress-fill').style.width = (doneCount / 3) * 100 + '%';
   }
 
   function goToStage(n) {
@@ -1360,10 +1340,9 @@
     state.gravityStep = 0;
     state.effectsVisible = false;
     startScreen.hidden = true;
-    quizEl.hidden = true;
     panel.hidden = false;
 
-    if (n === 1 || n === 4) {
+    if (n === 1) {
       setScene('moon');
       setView('moon');
     } else {
@@ -1376,155 +1355,6 @@
     renderPanel(n);
     updateStageTabs();
     setTimeout(layout, 20);
-  }
-
-  // ---------------------------------------------------------------------
-  // Quiz
-  // ---------------------------------------------------------------------
-
-  const OPTION_KEYS = ['أ', 'ب', 'ج', 'د'];
-
-  function openQuiz() {
-    state.quiz = { index: 0, firstTry: true, score: 0, results: [] };
-    quizEl.hidden = false;
-    showQuestion();
-  }
-
-  function setQuizScene(name) {
-    if (name === 'moon' || name === 'gravity') {
-      setScene('moon');
-      setView('moon');
-      state.gravityStep = name === 'gravity' ? 1 : 0;
-    } else {
-      setScene('sun');
-      setView('sun');
-      state.effectsVisible = true;
-      state.moonTarget = PHASES[name];
-    }
-  }
-
-  function progressDots() {
-    const dots = LESSON.quiz
-      .map((_, i) => {
-        const cls = state.quiz.results[i] ? 'is-correct' : i === state.quiz.index ? 'is-current' : '';
-        return `<i class="${cls}"></i>`;
-      })
-      .join('');
-    return `<div class="dots">${dots}</div>`;
-  }
-
-  function showQuestion() {
-    const q = LESSON.quiz[state.quiz.index];
-    state.quiz.firstTry = true;
-    setQuizScene(q.scene);
-
-    const options = q.options
-      .map((option, i) => `<button class="option" data-option="${i}"><span class="option__key">${OPTION_KEYS[i]}</span><span>${option}</span></button>`)
-      .join('');
-
-    quizEl.innerHTML = `
-      <div class="card">
-        <div class="quiz__head">
-          <span>السؤال ${toArabicDigits(state.quiz.index + 1)} من ${toArabicDigits(LESSON.quiz.length)}</span>
-          ${progressDots()}
-        </div>
-        <h3>${q.question}</h3>
-        <div class="options">${options}</div>
-        <p class="feedback" id="quiz-feedback" hidden></p>
-        <div class="actions" id="quiz-actions">
-          <button class="btn btn--secondary btn--small" id="quiz-close">رجوع إلى المراحل</button>
-        </div>
-      </div>`;
-
-    $$('.option', quizEl).forEach((btn) => {
-      btn.onclick = () => answerQuestion(Number(btn.dataset.option), btn);
-    });
-    $('#quiz-close').onclick = () => {
-      quizEl.hidden = true;
-      goToStage(4);
-    };
-    const first = $('.option', quizEl);
-    if (first) first.focus({ preventScroll: true });
-  }
-
-  function answerQuestion(choice, btn) {
-    const q = LESSON.quiz[state.quiz.index];
-    const feedback = $('#quiz-feedback');
-    if (btn.classList.contains('is-right')) return;
-
-    if (choice !== q.answer) {
-      state.quiz.firstTry = false;
-      btn.classList.remove('is-wrong');
-      void btn.offsetWidth;
-      btn.classList.add('is-wrong');
-      btn.disabled = true;
-      feedback.className = 'feedback feedback--hint';
-      feedback.innerHTML = `<b>فكرة تساعدك:</b> ${q.hint} حاول مرة أخرى.`;
-      feedback.hidden = false;
-      sounds.wrong();
-      return;
-    }
-
-    btn.classList.add('is-right');
-    $$('.option', quizEl).forEach((other) => { other.disabled = true; });
-    if (state.quiz.firstTry) state.quiz.score++;
-    state.quiz.results[state.quiz.index] = true;
-    feedback.className = 'feedback feedback--good';
-    feedback.innerHTML = `<b>إجابة صحيحة!</b> ${q.feedback}`;
-    feedback.hidden = false;
-    sounds.correct();
-    launchConfetti();
-
-    const isLast = state.quiz.index === LESSON.quiz.length - 1;
-    $('#quiz-actions').innerHTML = `<button class="btn btn--primary" id="quiz-next">${isLast ? 'احصل على شارتك' : 'السؤال التالي'}</button>`;
-    const next = $('#quiz-next');
-    next.onclick = () => {
-      if (isLast) {
-        showBadge();
-      } else {
-        state.quiz.index++;
-        showQuestion();
-      }
-    };
-    next.focus({ preventScroll: true });
-  }
-
-  function showBadge() {
-    markStageDone(4);
-    setQuizScene('moon');
-
-    quizEl.innerHTML = `
-      <div class="card badge">
-        <svg viewBox="0 0 200 200" role="img" aria-label="شارة مستكشف المحيطات">
-          <path d="M70 150 55 196 80 184 95 200 100 160ZM130 150 145 196 120 184 105 200 100 160Z" fill="#ff8a7a"/>
-          <circle cx="100" cy="95" r="78" fill="#ffc83d"/>
-          <circle cx="100" cy="95" r="64" fill="#0b2747"/>
-          <clipPath id="badge-clip"><circle cx="100" cy="95" r="64"/></clipPath>
-          <g clip-path="url(#badge-clip)">
-            <path d="M30 112c14-10 28-10 42 0s28 10 42 0 28-10 42 0 28 10 42 0v60H30z" fill="#47b0ff"/>
-            <path d="M30 128c14-10 28-10 42 0s28 10 42 0 28-10 42 0 28 10 42 0v60H30z" fill="#1f7fd0"/>
-          </g>
-          <circle cx="124" cy="66" r="16" fill="#cfd8e6"/>
-          <circle cx="118" cy="62" r="3.5" fill="#a9b4c4"/>
-          <circle cx="129" cy="72" r="2.5" fill="#a9b4c4"/>
-          <circle cx="74" cy="72" r="9" fill="#5fb46a"/>
-        </svg>
-        <h3>مستكشف المحيطات</h3>
-        <p class="lead">أحسنت! أكملت رحلة المد والجزر.</p>
-        <p class="badge__score">أجبت من المحاولة الأولى عن ${toArabicDigits(state.quiz.score)} من ${toArabicDigits(LESSON.quiz.length)} أسئلة</p>
-        <div class="actions">
-          <button class="btn btn--primary" id="badge-restart">أعد التجربة</button>
-          <button class="btn btn--secondary" id="badge-review">راجع المراحل</button>
-        </div>
-      </div>`;
-
-    launchConfetti(true);
-    sounds.correct();
-    $('#badge-restart').onclick = resetAll;
-    $('#badge-review').onclick = () => {
-      quizEl.hidden = true;
-      goToStage(1);
-    };
   }
 
   // ---------------------------------------------------------------------
@@ -1610,7 +1440,7 @@
     raycaster.setFromCamera(pointerNdc, camera);
   }
 
-  const canDragMoon = () => inSpace() && quizEl.hidden && startScreen.hidden;
+  const canDragMoon = () => inSpace() && startScreen.hidden;
 
   function pointerIsOnMoon(event) {
     aimRay(event);
@@ -1891,7 +1721,7 @@
     moonEffect.rotation.y = state.moonAngle;
     moonEffect.visible = sunEffect.visible = inSunScene() && state.effectsVisible;
 
-    const invite = state.stage >= 1 && state.stage <= 3 && !state.moonWasDragged && quizEl.hidden;
+    const invite = state.stage >= 1 && state.stage <= 3 && !state.moonWasDragged;
     setText(moonLabel.el, invite ? 'القمر · اسحبني' : 'القمر');
 
     updatePinTide(dt);
@@ -1907,7 +1737,7 @@
     lastFrame = now;
 
     if (!ar.active) {
-      const idle = state.stage === 0 || !quizEl.hidden;
+      const idle = state.stage === 0;
       if (idle && !reduceMotion && !cameraFeed.active) viewGoal.theta += dt * 0.05;
       updateCamera(dt);
       if (cameraFeed.active && motion.current) camera.quaternion.multiply(motion.delta());
@@ -1989,7 +1819,7 @@
     }
 
     function dock() {
-      const wanted = !!frameRenderer && state.stage >= 1 && state.stage <= 4;
+      const wanted = !!frameRenderer && state.stage >= 1 && state.stage <= 3;
       if (wanted && panel.children[1] !== box) panel.insertBefore(box, panel.children[1] || null);
       setHidden(box, !wanted);
     }
@@ -2310,7 +2140,7 @@
     };
 
     // Taps on the page controls should not place the model.
-    [panel, quizEl, $('.topbar')].forEach((el) => {
+    [panel, $('.topbar')].forEach((el) => {
       el.addEventListener('beforexrselect', (event) => event.preventDefault());
     });
 
@@ -2323,7 +2153,6 @@
 
   function resetAll() {
     state = createState(state);
-    quizEl.hidden = true;
     panel.hidden = true;
     startScreen.hidden = false;
     earthSpin.rotation.y = 0;
@@ -2338,10 +2167,6 @@
   });
 
   $('#start-btn').onclick = () => goToStage(1);
-  $('#start-quiz-btn').onclick = () => {
-    goToStage(4);
-    openQuiz();
-  };
   $('#reset-btn').onclick = resetAll;
   $('#sound-btn').onclick = function () {
     state.sound = !state.sound;
